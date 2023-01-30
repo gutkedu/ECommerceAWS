@@ -17,20 +17,27 @@ export async function handler(
   );
 
   if (event.resource === '/products') {
-    if (method === 'GET') {
-      console.log('GET /products');
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: 'hello from get products' }),
-      };
-    }
+    console.log('POST /products');
+    return {
+      statusCode: 201,
+      body: JSON.stringify({ message: 'hello from post products' }),
+    };
   } else if (event.resource === '/products/{id}') {
     const productId = event.pathParameters!.id as string;
-    console.log(`GET /products/{${productId}}`);
-    return {
-      statusCode: 200,
-      body: `hello from GET /products/{${productId}}`,
-    };
+
+    if (method === 'PUT') {
+      console.log(`PUT /products/{${productId}}`);
+      return {
+        statusCode: 200,
+        body: `hello from PUT /products/{${productId}}`,
+      };
+    } else if (method === 'DELETE') {
+      console.log(`DELETE /products/{${productId}}`);
+      return {
+        statusCode: 200,
+        body: `hello from DELETE /products/{${productId}}`,
+      };
+    }
   }
   return {
     statusCode: 400,
