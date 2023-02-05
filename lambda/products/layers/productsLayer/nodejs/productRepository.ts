@@ -42,7 +42,7 @@ export class ProductRepository {
 
   async create(product: Product): Promise<Product> {
     product.id = uuidV4();
-    await this.ddbClient.put({
+    const createdProduct = await this.ddbClient.put({
       TableName: this.productsDdb,
       Item: product,
     });

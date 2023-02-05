@@ -48,7 +48,9 @@ export async function handler(
       } catch (ConditionalCheckFailedException) {
         return {
           statusCode: 404,
-          body: `Product with id ${productId} does not exist`,
+          body: JSON.stringify({
+            message: `Product with id ${productId} does not exist`,
+          }),
         };
       }
     } else if (method === 'DELETE') {
@@ -63,7 +65,7 @@ export async function handler(
         console.error((<Error>error).message);
         return {
           statusCode: 404,
-          body: (<Error>error).message,
+          body: JSON.stringify({ message: (<Error>error).message }),
         };
       }
     }

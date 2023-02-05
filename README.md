@@ -16,3 +16,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 -- cdk bootstrap
 -- cdk list
 -- cdk destroy --all 
+-- cdk deploy --all --require-approval never

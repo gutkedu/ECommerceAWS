@@ -44,7 +44,7 @@ export async function handler(
       console.error((<Error>error).message);
       return {
         statusCode: 404,
-        body: (<Error>error).message,
+        body: JSON.stringify({ message: (<Error>error).message }),
       };
     }
   }
