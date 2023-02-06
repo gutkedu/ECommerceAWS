@@ -3,8 +3,11 @@ import {
   APIGatewayProxyResult,
   Context,
 } from 'aws-lambda';
-import { DynamoDB } from 'aws-sdk';
-import { Product, ProductRepository } from '/opt/nodejs/productsLayer';
+import DynamoDB = require('aws-sdk/clients/dynamodb');
+import {
+  Product,
+  ProductRepository,
+} from './layers/productsLayer/nodejs/productRepository';
 
 const productsDdb = process.env.PRODUCTS_DDB!;
 const ddbClient = new DynamoDB.DocumentClient();
@@ -14,64 +17,91 @@ export async function handler(
   event: APIGatewayProxyEvent,
   context: Context,
 ): Promise<APIGatewayProxyResult> {
-  const method = event.httpMethod;
   const lambdaRequestId = context.awsRequestId;
   const apiRequestId = event.requestContext.requestId;
+
+  const method = event.httpMethod;
 
   console.log(
     `API GATEWAY REQUEST ID: ${apiRequestId} - LAMBDA REQUEST ID: ${lambdaRequestId}`,
   );
 
   if (event.resource === '/products') {
-    console.log('POST /products');
-    const product = JSON.parse(event.body!) as Product;
-    const createdProduct = await productRepository.create(product);
-    return {
-      statusCode: 201,
-      body: JSON.stringify(createdProduct),
-    };
-  } else if (event.resource === '/products/{id}') {
+    if (method === 'POST') {
+      const product = (await JSON.parse(event.body!)) as Product;
+
+      const productCreated = await productRepository.create(product);
+
+      return {
+        statusCode: 201,
+        body: JSON.stringify(productCreated, null, 2),
+      };
+    }
+  }
+
+  if (event.resource === '/products/{id}') {
     const productId = event.pathParameters!.id as string;
 
     if (method === 'PUT') {
-      console.log(`PUT /products/{${productId}}`);
-      const product = JSON.parse(event.body!) as Product;
+      const product = (await JSON.parse(event.body!)) as Product;
+
       try {
-        const updatedProduct = await productRepository.updateProduct(
+        const productUpdated = await productRepository.updateProduct(
           productId,
           product,
         );
         return {
           statusCode: 200,
-          body: JSON.stringify(updatedProduct),
-        };
-      } catch (ConditionalCheckFailedException) {
-        return {
-          statusCode: 404,
-          body: JSON.stringify({
-            message: `Product with id ${productId} does not exist`,
-          }),
-        };
-      }
-    } else if (method === 'DELETE') {
-      console.log(`DELETE /products/{${productId}}`);
-      try {
-        const deletedProduct = await productRepository.deleteById(productId);
-        return {
-          statusCode: 200,
-          body: JSON.stringify(deletedProduct),
+          body: JSON.stringify(productUpdated, null, 2),
         };
       } catch (error) {
-        console.error((<Error>error).message);
+        console.error((error as Error).message);
+
         return {
           statusCode: 404,
-          body: JSON.stringify({ message: (<Error>error).message }),
+          body: JSON.stringify(
+            {
+              message: 'Product not found',
+            },
+            null,
+            2,
+          ),
+        };
+      }
+    }
+
+    if (method === 'DELETE') {
+      try {
+        const product = await productRepository.deleteById(productId);
+        return {
+          statusCode: 200,
+          body: JSON.stringify(product, null, 2),
+        };
+      } catch (error) {
+        console.error((error as Error).message);
+
+        return {
+          statusCode: 404,
+          body: JSON.stringify(
+            {
+              message: (error as Error).message,
+            },
+            null,
+            2,
+          ),
         };
       }
     }
   }
+
   return {
     statusCode: 400,
-    body: JSON.stringify({ message: 'bad request' }),
+    body: JSON.stringify(
+      {
+        message: 'Bad Request',
+      },
+      null,
+      2,
+    ),
   };
 }
