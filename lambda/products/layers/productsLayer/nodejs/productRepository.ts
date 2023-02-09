@@ -7,6 +7,7 @@ export interface Product {
   code: string;
   price: number;
   model: string;
+  productUrl: string;
 }
 
 export class ProductRepository {
@@ -78,12 +79,13 @@ export class ProductRepository {
         ReturnValues: 'UPDATED_NEW',
         ConditionExpression: 'attribute_exists(id)',
         UpdateExpression:
-          'set productName = :n, code = :c, price = :p, model = :m',
+          'set productName = :n, code = :c, price = :p, model = :m, productUrl = :u',
         ExpressionAttributeValues: {
           ':n': productInput.productName,
           ':c': productInput.code,
           ':p': productInput.price,
           ':m': productInput.model,
+          ':u': productInput.productUrl,
         },
       })
       .promise();
