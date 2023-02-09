@@ -1,6 +1,6 @@
 import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion, Tracing } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -52,6 +52,7 @@ export class ProductsAppStack extends Stack {
           PRODUCTS_DDB: this.productsDdb.tableName,
         },
         layers: [productsLayer],
+        tracing: Tracing.ACTIVE,
       },
     );
     this.productsDdb.grantReadData(this.productsFetchHandler);
@@ -73,6 +74,7 @@ export class ProductsAppStack extends Stack {
           PRODUCTS_DDB: this.productsDdb.tableName,
         },
         layers: [productsLayer],
+        tracing: Tracing.ACTIVE,
       },
     );
     this.productsDdb.grantWriteData(this.productsAdminHandler);
