@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
+import { App, Environment } from 'aws-cdk-lib';
 import { ProductsAppStack } from '../lib/productsApp-stack';
 import { ECommerceApiStack } from '../lib/ecommerceApi-stack';
 import { ProductsAppLayersStack } from '../lib/productsAppLayers-stack';
+import { EventsDdbStack } from 'lib/eventsDdb-stack';
 
-const app = new cdk.App();
+const app = new App();
 
-const env: cdk.Environment = {
+const env: Environment = {
   account: '683803546978',
   region: 'us-east-1',
 };
@@ -26,11 +27,18 @@ const productsAppLayersStack = new ProductsAppLayersStack(
   },
 );
 
+const eventsDdbStack = new EventsDdbStack(app, 'EventsDdb', {
+  env,
+  tags,
+});
+
 const productsAppStack = new ProductsAppStack(app, 'ProductsApp', {
+  eventsDdb: eventsDdbStack.table,
   env,
   tags,
 });
 productsAppStack.addDependency(productsAppLayersStack);
+productsAppStack.addDependency(eventsDdbStack);
 
 const eCommerceApiStack = new ECommerceApiStack(app, 'ECommerceApi', {
   env,

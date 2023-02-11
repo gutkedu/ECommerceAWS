@@ -33,6 +33,7 @@ export class ProductsAppStack extends Stack {
       writeCapacity: 1,
     });
 
+    // PRODUCTS LAYER
     const productsLayerArn = StringParameter.valueForStringParameter(
       this,
       'ProductsLayerVersionArn',
@@ -41,6 +42,17 @@ export class ProductsAppStack extends Stack {
       this,
       'ProductsLayerVersionArn',
       productsLayerArn,
+    );
+
+    //PRODUCT EVENTS LAYER
+    const productEventsLayerArn = StringParameter.valueForStringParameter(
+      this,
+      'ProductEventsLayerVersionArn',
+    );
+    const productEventsLayer = LayerVersion.fromLayerVersionArn(
+      this,
+      'ProductEventsLayerVersionArn',
+      productEventsLayerArn,
     );
 
     const productEventsHandler = new NodejsFunction(
@@ -59,6 +71,7 @@ export class ProductsAppStack extends Stack {
         environment: {
           EVENTS_DDB: props.eventsDdb.tableName,
         },
+        layers: [productEventsLayer],
         tracing: Tracing.ACTIVE,
         insightsVersion: LambdaInsightsVersion.VERSION_1_0_119_0,
       },
@@ -105,7 +118,7 @@ export class ProductsAppStack extends Stack {
           PRODUCTS_DDB: this.productsDdb.tableName,
           PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName,
         },
-        layers: [productsLayer],
+        layers: [productsLayer, productEventsLayer],
         tracing: Tracing.ACTIVE,
         insightsVersion: LambdaInsightsVersion.VERSION_1_0_119_0,
       },
