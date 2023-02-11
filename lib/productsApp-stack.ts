@@ -9,12 +9,16 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
+interface ProductsAppStackProps extends StackProps {
+  eventsDdb: Table;
+}
+
 export class ProductsAppStack extends Stack {
   readonly productsFetchHandler: NodejsFunction;
   readonly productsAdminHandler: NodejsFunction;
   readonly productsDdb: Table;
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: ProductsAppStackProps) {
     super(scope, id, props);
 
     this.productsDdb = new Table(this, 'ProductsDdb', {
@@ -38,6 +42,28 @@ export class ProductsAppStack extends Stack {
       'ProductsLayerVersionArn',
       productsLayerArn,
     );
+
+    const productEventsHandler = new NodejsFunction(
+      this,
+      'ProductEventsFunction',
+      {
+        functionName: 'ProductEventsFunction',
+        entry: 'lambda/products/productEventsFunction.ts',
+        handler: 'handler',
+        memorySize: 128,
+        timeout: Duration.seconds(2),
+        bundling: {
+          minify: true,
+          sourceMap: false,
+        },
+        environment: {
+          EVENTS_DDB: props.eventsDdb.tableName,
+        },
+        tracing: Tracing.ACTIVE,
+        insightsVersion: LambdaInsightsVersion.VERSION_1_0_119_0,
+      },
+    );
+    props.eventsDdb.grantWriteData(productEventsHandler);
 
     this.productsFetchHandler = new NodejsFunction(
       this,
@@ -77,6 +103,7 @@ export class ProductsAppStack extends Stack {
         },
         environment: {
           PRODUCTS_DDB: this.productsDdb.tableName,
+          PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName,
         },
         layers: [productsLayer],
         tracing: Tracing.ACTIVE,
@@ -84,5 +111,6 @@ export class ProductsAppStack extends Stack {
       },
     );
     this.productsDdb.grantWriteData(this.productsAdminHandler);
+    productEventsHandler.grantInvoke(this.productsAdminHandler);
   }
 }
