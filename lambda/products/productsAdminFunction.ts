@@ -3,7 +3,8 @@ import {
   APIGatewayProxyResult,
   Context,
 } from 'aws-lambda';
-import DynamoDB = require('aws-sdk/clients/dynamodb');
+import { DynamoDB, Lambda } from 'aws-sdk';
+import { ProductEvent, ProductEventType } from '/opt/nodejs/productEventsLayer';
 import {
   Product,
   ProductRepository,
@@ -13,7 +14,11 @@ import { captureAWS } from 'aws-xray-sdk';
 captureAWS(require('aws-sdk'));
 
 const productsDdb = process.env.PRODUCTS_DDB!;
+const productEventsFunctionName = process.env.PRODUCT_EVENTS_FUNCTION_NAME!;
+
 const ddbClient = new DynamoDB.DocumentClient();
+const lambdaClient = new Lambda();
+
 const productRepository = new ProductRepository(ddbClient, productsDdb);
 
 export async function handler(
@@ -32,12 +37,19 @@ export async function handler(
   if (event.resource === '/products') {
     if (method === 'POST') {
       const product = (await JSON.parse(event.body!)) as Product;
-
       const productCreated = await productRepository.create(product);
+
+      const response = await sendProductEvent(
+        productCreated,
+        ProductEventType.CREATED,
+        'emailqualquer.created@email.com', // TODO: use real email
+        lambdaRequestId,
+      );
+      console.log(response);
 
       return {
         statusCode: 201,
-        body: JSON.stringify(productCreated, null, 2),
+        body: JSON.stringify(productCreated),
       };
     }
   }
@@ -53,22 +65,27 @@ export async function handler(
           productId,
           product,
         );
+
+        const response = await sendProductEvent(
+          productUpdated,
+          ProductEventType.UPDATED,
+          'emailqualquer.updated@email.com', // TODO: use real email
+          lambdaRequestId,
+        );
+        console.log(response);
+
         return {
           statusCode: 200,
-          body: JSON.stringify(productUpdated, null, 2),
+          body: JSON.stringify(productUpdated),
         };
       } catch (error) {
         console.error((error as Error).message);
 
         return {
           statusCode: 404,
-          body: JSON.stringify(
-            {
-              message: 'Product not found',
-            },
-            null,
-            2,
-          ),
+          body: JSON.stringify({
+            message: 'Product not found',
+          }),
         };
       }
     }
@@ -76,22 +93,27 @@ export async function handler(
     if (method === 'DELETE') {
       try {
         const product = await productRepository.deleteById(productId);
+
+        const response = await sendProductEvent(
+          product,
+          ProductEventType.DELETED,
+          'emailqualquer.deleted@email.com', // TODO: use real email
+          lambdaRequestId,
+        );
+        console.log(response);
+
         return {
           statusCode: 200,
-          body: JSON.stringify(product, null, 2),
+          body: JSON.stringify(product),
         };
       } catch (error) {
         console.error((error as Error).message);
 
         return {
           statusCode: 404,
-          body: JSON.stringify(
-            {
-              message: (error as Error).message,
-            },
-            null,
-            2,
-          ),
+          body: JSON.stringify({
+            message: (error as Error).message,
+          }),
         };
       }
     }
@@ -99,12 +121,32 @@ export async function handler(
 
   return {
     statusCode: 400,
-    body: JSON.stringify(
-      {
-        message: 'Bad Request',
-      },
-      null,
-      2,
-    ),
+    body: JSON.stringify({
+      message: 'Bad Request',
+    }),
   };
+}
+
+async function sendProductEvent(
+  product: Product,
+  eventType: ProductEventType,
+  email: string,
+  lambdaRequestId: string,
+): Promise<Lambda.InvocationResponse> {
+  const event: ProductEvent = {
+    email,
+    eventType,
+    productCode: product.code,
+    productId: product.id,
+    productPrice: product.price,
+    requestId: lambdaRequestId,
+  };
+
+  return lambdaClient
+    .invoke({
+      FunctionName: productEventsFunctionName,
+      Payload: JSON.stringify(event),
+      InvocationType: 'RequestResponse',
+    })
+    .promise();
 }
