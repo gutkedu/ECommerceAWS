@@ -1,5 +1,3 @@
-Certainly! Here's a template for a README file for the repository "ECommerceAWS" on GitHub:
-
 # ECommerceAWS
 
 ECommerceAWS is an e-commerce application built using AWS (Amazon Web Services) infrastructure. It provides a scalable and robust solution for running an online store, utilizing various AWS services for different components of the application.
